@@ -2,7 +2,7 @@ import pymongo as pym
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 import uuid
-from typing import Union, List
+from typing import Union, List, Optional, Any, Dict
 
 mongoclient = pym.MongoClient("mongodb://datamaster:B8znzNgx2559BzWF1EJw@localhost:27017/")
 
@@ -27,7 +27,7 @@ class Question(BaseModel):
         [], description="The options for the question. Options can be images if you specify the type.  ")
     answer: str = Field(
         description="The correct answer to the question, should be exactly the same as the respective option.")
-    subject_name: str = Field(
+    subject: str = Field(
         description="The subject that the question belongs under. This is so that the data is readable during export.")
     difficulty_rating: int = Field(
         "1", description="The difficulty rating of the question for easier selection. Should be between 1 and 5")
@@ -39,7 +39,7 @@ class Test(BaseModel):
     title: str = Field("", description="The title of this test.")
     client: str = Field(
         "", description="The client for whom this test was made for.")
-    subjects: List = Field(description="The subjects of the questions in this test. Each subject is a dictionary with the keys subjectid, subject_name, and subject_total, where subject_total is the total score of all the questions of the subject in the test.")
+    subjects: List = Field(description="The subjects of the questions in this test. Each subject is a dictionary with the keys subject, and subject_total, where subject_total is the total score of all the questions of the subject in the test.")
     publish_date: datetime = datetime.now(tz=timezone.utc)
     total_score: int = Field(0, description="The total score of the test.")
     submissions: int = Field(
@@ -50,7 +50,7 @@ class Test(BaseModel):
         [], description="A list of questions in the test. Each question should be a dictionary with keys questionid and value, the value being the point value.")
     negative_multiplier: float = Field(
         0, description="Optional negative multiplier. If set to anything, the total points will be subtracted from if the question is wrong.")
-
+    
 
 class Response(BaseModel):
     id : str = Field(default_factory=lambda: str(uuid.uuid4()), description = 'The ID of the Test Response', alias="_id")
@@ -59,8 +59,8 @@ class Response(BaseModel):
     submission_date: datetime = Field(datetime.now(
         tz=timezone.utc), description="The date time at which the response was submitted.")
     subject_scores: List = Field(
-        [], description="The scores for each questions in each subject. Each entry in the list should be a dictionary with keys subjectid, subject_name, and subject_score")
-    
+        [], description="The scores for each questions in each subject. Each entry in the list should be a dictionary with keys subject, and subject_score")
+    client: str = Field(description="The client that the responder is under.")
     info: List = Field(
         [], description="The responses to info questions. The list should consist of dictionary objects with keys infoid and response.")
     results: dict = Field(
@@ -130,7 +130,23 @@ def question_by_id(qid: Union[str,List[str]]):
 
     return(list(results))
 
-# def get_questions(subject: Union[str, List[str]] =None, difficulty_rating: Union[str])
+#Search for questions
+def search_questions(subjects : Union[str, List[str]] = None, difficulty: Union[int, List[int]] = None):
+    filterstring = {}
+    if subjects != None:
+        filterstring["subject"] = {"$in":[]}
+        if type(subjects) == str:
+            filterstring["subject"]["$in"].append(subjects)
+        else:
+            filterstring["subject"]["$in"].extend(subjects)
+    if subjects != None:
+        filterstring["difficulty_rating"] = {"$in":[]}
+        if type(difficulty) == str:
+            filterstring["difficulty_rating"]["$in"].append(subjects)
+        else:
+            filterstring["difficulty_rating"]["$in"].extend(subjects)
+    result = db["questions"].find(filterstring)
+    return(list(result))
 
 def update_question(qid: str, new : Question):
     """Updates a question based on ID.
@@ -165,7 +181,7 @@ def delete_questions(qid: Union[str, List[str]] = None, content: str = None, sub
         
         return(f"Deleted {count} {"question" if count==1 else "questions"}")
     elif subject:
-       count = (db["questions"].delete_many({"subject_name": subject})).deleted_count
+       count = (db["questions"].delete_many({"subject": subject})).deleted_count
        return(f"Deleted {count} {"question" if count==1 else "questions"}")
 
 #CRUD for info
@@ -289,6 +305,136 @@ def test_by_id(tid:Union[str,List[str]]):
         tidlist.extend(tid)
     return(list(db["tests"].find({"_id":{"$in":tidlist}})))
 
+#Search for questions
+def search_tests(
+    subjects: Optional[Union[str, List[str]]] = None,
+    client: Optional[Union[str, List[str]]] = None,
+    title: Optional[str] = None,
+    start_date: Optional[Union[str, datetime]] = None,
+    end_date: Optional[Union[str, datetime]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Search tests in the exam database based on optional parameters.
+    
+    Args:
+        subjects: Subject ID(s) to filter by. Can be a single string or list of strings.
+        client: Client name(s) to filter by. Can be a single string or list of strings.
+        title: Test title to filter by (partial match)
+        start_date: Start date for publish_date range (inclusive)
+                   Can be string in format 'YYYY-MM-DD' or datetime object
+        end_date: End date for publish_date range (inclusive)
+                 Can be string in format 'YYYY-MM-DD' or datetime object
+    
+    Returns:
+        List of test documents matching the criteria
+    """
+    # Connect to MongoDB
+    collection = db["tests"]
+    
+    # Build the query
+    query = {}
+    
+    # Add subject filter if provided
+    if subjects:
+        # Convert single string to list if needed
+        if isinstance(subjects, str):
+            subjects = [subjects]
+        # Filter tests that have any of the specified subject IDs
+        query["subjects.subjectId"] = {"$in": subjects}
+    
+    # Add client filter if provided
+    if client:
+        # Convert single string to list if needed
+        if isinstance(client, str):
+            client = [client]
+        # If only one client, use exact match
+        if len(client) == 1:
+            query["client"] = client[0]
+        # If multiple clients, use $in operator
+        else:
+            query["client"] = {"$in": client}
+    
+    # Add title filter if provided (using regex for partial match)
+    if title:
+        query["title"] = {"$regex": title, "$options": "i"}  # case-insensitive
+    
+    # Add date range filter if provided
+    if start_date or end_date:
+        date_query = {}
+        
+        # Convert string dates to datetime if needed
+        if start_date and isinstance(start_date, str):
+            start_date = datetime.fromisoformat(start_date)
+        if end_date and isinstance(end_date, str):
+            end_date = datetime.fromisoformat(end_date)
+        
+        # Add start_date to query
+        if start_date:
+            date_query["$gte"] = start_date
+        
+        # Add end_date to query
+        if end_date:
+            date_query["$lte"] = end_date
+        
+        # Add date query to main query
+        if date_query:
+            query["publish_date"] = date_query
+    
+    # Execute the query and return results
+    results = list(collection.find(query))
+    return results
+
+from pymongo import MongoClient
+from typing import List, Dict, Union, Optional, Any
+
+def get_test_options(
+    get_clients: bool = False,
+    get_subjects: bool = False
+) -> Dict[str, List[Union[str, Dict[str, str]]]]:
+    """
+    Retrieves lists of unique clients or subjects from the tests collection.
+    
+    Args:
+        get_clients: If True, retrieves a list of unique client names
+        get_subjects: If True, retrieves a list of unique subject objects
+    
+    Returns:
+        Either a list of clients or a list of subjects
+    """
+    collection = db["tests"]
+    
+    # Retrieve unique clients if requested
+    if get_clients:
+        # Use distinct to get unique client names
+        clients = collection.distinct("client")
+        return( sorted(clients) ) # Sort alphabetically
+    
+    # Retrieve unique subjects if requested
+    if get_subjects:
+        # This is more complex as subjects are in an array
+        # First get all tests and extract unique subjects
+        all_subjects = {}
+        
+        # Aggregate to get unique subject objects
+        pipeline = [
+            {"$unwind": "$subjects"},  # Deconstruct the subjects array
+            {
+                "$group": {
+                    "_id": "$subjects.subject_name"
+                    }
+            },
+            {"$sort": {"name": 1}}  # Sort by subject name
+        ]
+        
+        subjects_cursor = collection.aggregate(pipeline)
+        
+        # Convert cursor to list of subject objects
+        subjects_list = []
+        for subject in subjects_cursor:
+            subjects_list.append(subject["_id"])
+        
+        return(subjects_list)
+
 def create_test(test = Test):
     return((db["tests"].insert_one(test.model_dump(by_alias=True))).inserted_id)
 
@@ -313,3 +459,102 @@ def test_delete(tid:Union[str,List[str]] = None, title:Union[str, List[str]] = N
         else:
             return(db["info"].delete_many({"field_name": {"$in":field_name}}).deleted_count)
 
+
+#CRUD for Responses
+
+def get_responses(rid: Union[str,List[str]] = None, tid: Union[str,List[str]] = None ):
+
+    if rid:
+        ridlist = []
+        if type(rid)==str:
+            ridlist.append(rid)
+        else:
+            ridlist.extend(rid)
+
+        return(list(db["responses"].find({"_id":{"$in":ridlist}})))
+    
+    if tid:
+        tidlist = []
+        if type(tid)==str:
+            ridlist.append(tid)
+        else:
+            ridlist.extend(tid)
+
+        return(list(db["responses"].find({"test_ID":{"$in":tidlist}})))
+
+#Search for questions
+def search_responses(
+    client: Optional[str] = None,
+    start_date: Optional[Union[str, datetime]] = None,
+    end_date: Optional[Union[str, datetime]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Search responses in the exam database based on optional parameters.
+    
+    Args:
+        client: Client name to filter by
+        test_id: Test ID to filter by
+        start_date: Start date for submission_date range (inclusive)
+                   Can be string in format 'YYYY-MM-DD' or datetime object
+        end_date: End date for submission_date range (inclusive)
+                 Can be string in format 'YYYY-MM-DD' or datetime object
+    
+    Returns:
+        List of response documents matching the criteria.
+    """
+    # Connect to MongoDB
+    collection = db["responses"]
+    query = {}
+    
+    # Add client filter if provided
+    if client:
+        query["client"] = client
+    # Add testid filter if provided
+    if test_id:
+        query["test_ID"] = test_id
+    
+    # Add date range filter if provided
+    if start_date or end_date:
+        date_query = {}
+        
+        # Convert string dates to datetime if needed
+        if start_date and isinstance(start_date, str):
+            start_date = datetime.fromisoformat(start_date)
+        if end_date and isinstance(end_date, str):
+            end_date = datetime.fromisoformat(end_date)
+        # Add start_date to query
+        if start_date:
+            date_query["$gte"] = start_date
+        # Add end_date to query
+        if end_date:
+            date_query["$lte"] = end_date
+        # Add date query to main query
+        if date_query:
+            query["submission_date"] = date_query
+    
+    # Execute the query and return results
+    results = list(collection.find(query))    
+    return results
+
+def add_response(response:Response):
+    return((db["responses"].insert_one(response.model_dump(by_alias=True))).inserted_id)
+
+def delete_responses(rid: Union[str,List[str]] = None, tid: Union[str,List[str]] = None ):
+
+    if rid:
+        ridlist = []
+        if type(rid)==str:
+            ridlist.append(rid)
+        else:
+            ridlist.extend(rid)
+
+        return(db["responses"].delete_many({"_id":{"$in":ridlist}}).deleted_count)
+
+    if tid:
+        tidlist = []
+        if type(tid)==str:
+            ridlist.append(tid)
+        else:
+            ridlist.extend(tid)
+
+        return(db["responses"].delete_many({"test_ID":{"$in":tidlist}}).deleted_count)
