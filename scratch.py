@@ -24,11 +24,40 @@ Question(
 )
 ]
 
+newq2 = Question(
+    content = "HEHAHO",
+    options = ["hehe","hoohoo","haha"],
+    answer = "haha",
+    subjectid = "hehe",
+    subject_name = "hahaha",
+    difficulty_rating = 2
+)
 
-print(newq)
+# print(newq)
 
 # print(archiver.add_question(newq))
 
-qind = [i["_id"] for i in archiver.find_by_content([i.content for i in newq])]
-print(qind)
-print(archiver.delete_questions(qind))
+# qind = [i["_id"] for i in archiver.find_by_content([i.content for i in newq])]
+# print(qind)
+# print(archiver.delete_questions(qind))
+
+print(update_question("49087195-2a4d-4a9e-ae9f-bcf08f257ce9", newq2))
+
+#ID CRUD TEST
+
+newinf = [Info(
+    field_name = "Visitor Status",
+    item_type = "text",
+    field_description = "Are you allowed to be a visitor?"
+),
+Info(
+    field_name = "Visitor ID",
+    item_type = "text",
+    field_description = "Your visitor ID code."
+)
+]
+
+
+
+# print(archiver.info_by_name("Email address"))
+# print(archiver.add_info_field(newinf))
