@@ -6,32 +6,32 @@
 from archiver import *
 import archiver
 
-newq = [Question(
-    content = "hahahehe",
-    options = ["hehe","hoohoo","haha"],
-    answer = "haha",
-    subjectid = "hehe",
-    subject_name = "hahaha",
-    difficulty_rating = 2
-),
-Question(
-    content = "hahaheho",
-    options = ["hehe","hoohoo","haha"],
-    answer = "haha",
-    subjectid = "hehe",
-    subject_name = "hahaha",
-    difficulty_rating = 2
-)
-]
+# newq = [Question(
+#     content = "hahahehe",
+#     options = ["hehe","hoohoo","haha"],
+#     answer = "haha",
+#     subjectid = "hehe",
+#     subject_name = "hahaha",
+#     difficulty_rating = 2
+# ),
+# Question(
+#     content = "hahaheho",
+#     options = ["hehe","hoohoo","haha"],
+#     answer = "haha",
+#     subjectid = "hehe",
+#     subject_name = "hahaha",
+#     difficulty_rating = 2
+# )
+# ]
 
-newq2 = Question(
-    content = "HEHAHO",
-    options = ["hehe","hoohoo","haha"],
-    answer = "haha",
-    subjectid = "hehe",
-    subject_name = "hahaha",
-    difficulty_rating = 2
-)
+# newq2 = Question(
+#     content = "HEHAHO",
+#     options = ["hehe","hoohoo","haha"],
+#     answer = "haha",
+#     subjectid = "hehe",
+#     subject_name = "hahaha",
+#     difficulty_rating = 2
+# )
 
 # print(newq)
 
@@ -41,23 +41,25 @@ newq2 = Question(
 # print(qind)
 # print(archiver.delete_questions(qind))
 
-print(update_question("49087195-2a4d-4a9e-ae9f-bcf08f257ce9", newq2))
+# print(update_question("49087195-2a4d-4a9e-ae9f-bcf08f257ce9", newq2))
 
 #ID CRUD TEST
 
-newinf = [Info(
+newinf = [
+    Info(
     field_name = "Visitor Status",
     item_type = "text",
     field_description = "Are you allowed to be a visitor?"
-),
-Info(
-    field_name = "Visitor ID",
-    item_type = "text",
-    field_description = "Your visitor ID code."
-)
+    ),
+    Info(
+        field_name = "Visitor ID",
+        item_type = "text",
+        field_description = "Your visitor ID code."
+    )
 ]
 
 
 
 # print(archiver.info_by_name("Email address"))
 # print(archiver.add_info_field(newinf))
+print(archiver.search_tests())

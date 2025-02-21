@@ -8,7 +8,11 @@ from pandas.api.types import (
     is_numeric_dtype,
     is_object_dtype,
 )
-
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import archiver
+from archiver import *
+from pprint import pprint
 
 def filter_dataframe(df: pd.DataFrame, excluded_columns: List[str] = []) -> pd.DataFrame:
     """
@@ -87,145 +91,43 @@ def filter_dataframe(df: pd.DataFrame, excluded_columns: List[str] = []) -> pd.D
     return df
 
 
-def create_results_grid(filename: str = ""):
+def create_results_grid(testid: str = ""):
     """
     Create and display a results grid for any exam data file.
-    Shows all candidate data columns up to scol, plus computed columns.
+    Shows all candidate data columns up to scol, p4lus computed columns.
     
     Args:
-        filename (str): The name of the Excel file to load
+        testid (str): The name of the Excel file to load
     """
-    if not filename:
-        st.error("No file specified!")
-        return
-        
-    parent_dir = os.getcwd().replace("testresults", "").replace("\\","/")
-    filepath = f"{parent_dir}/responselists/{filename}"
     
+    test= archiver.test_by_id(tid=testid)[0]
+    responses = archiver.get_responses(tid=test["_id"])
+    info_priorities = {i["_id"]:i["priority"] for i in archiver.info_by_id(test["infofields"].keys())}
+    pprint(responses)
     try:
+        
         # Load Excel file
-        df = pd.read_excel(filepath)
+        records = []
+        record={}
         
-        # Clean up Excel data
-        for col in df.columns:
-            if df[col].dtype == object:  # only clean string columns
-                df[col] = df[col].apply(lambda x: x.rstrip("'") if isinstance(x, str) else x)
-        
-        # Parse filename to get test parameters
-        parts = filename.split(".")[0].split("-")
-        try:
-            qnum = int(parts[-1])  # Number of questions
-            scol = int(parts[-2])  # Starting column for answers
-        except (IndexError, ValueError):
-            st.warning("Filename format doesn't match expected pattern. Using default values.")
-            # Find score column and estimate number of questions
-            if "Score" in df.columns:
-                qnum = int(df["Score"].max())
-            else:
-                qnum = 10  # default fallback
-            scol = len(df.columns) // 2  # default fallback - assume answers are in second half
-        
-        # Ensure Score column exists or add it if needed
-        score_col_name = None
-        for col in df.columns:
-            if "score" in str(col).lower():
-                score_col_name = col
-                break
-        
-        if score_col_name is not None:
-            if score_col_name != "Score":
-                df = df.rename(columns={score_col_name: "Score"})
-            df["Score"] = pd.to_numeric(df["Score"], errors='coerce')
-        else:
-            st.warning("No Score column found in the data")
-            
-        # Calculate the number of answered questions for each candidate
-        answeredcol = []
-        for j in range(len(df)):
-            candprog = 0
-            # Get answer columns starting from scol
-            for i in range(qnum):
-                if scol + i - 1 < len(df.columns):
-                    if pd.notna(df.iloc[j, scol + i - 1]) and str(df.iloc[j, scol + i - 1]) != "":
-                        candprog += 1
-            answeredcol.append(candprog)
-            
-        # Add Answered column near the beginning
-        df.insert(2, "Answered", answeredcol)
-        
-        # Add Score Percent if Score exists
-        if "Score" in df.columns:
-            score_idx = df.columns.get_loc("Score")
-            df.insert(score_idx + 1, "Score Percent", df["Score"])
-        
-        # Ensure UUID column exists
-        if "UUID" not in df.columns:
-            # Try to find a suitable ID column
-            id_cols = [col for col in df.columns if 'id' in str(col).lower() or 'uuid' in str(col).lower()]
-            if id_cols:
-                df = df.rename(columns={id_cols[0]: "UUID"})
-            else:
-                # Create a UUID column at the end
-                df["UUID"] = [f"candidate_{i}" for i in range(len(df))]
-                
-        # Ensure UUID contains the full URL
-        df["UUID"] = df["UUID"].apply(lambda uuid: 
-            f"https://stu.globalknowledgetech.com:9181/?uuid={uuid}" 
-            if not str(uuid).startswith("http") else uuid)
-        
-        # Get all candidate data columns up to scol
-        candidate_columns = list(df.columns[:scol-1])
-        
-        # Ensure our special columns are included
-        display_columns = []
-        if "Answered" in df.columns and "Answered" not in candidate_columns:
-            display_columns.append("Answered")
-        
-        # Add all candidate columns
-        display_columns.extend(candidate_columns)
-        
-        # Add Score and Score Percent if they exist but aren't already in candidate_columns
-        if "Score" in df.columns and "Score" not in candidate_columns:
-            display_columns.append("Score")
-        if "Score Percent" in df.columns and "Score Percent" not in candidate_columns:
-            display_columns.append("Score Percent")
-        
-        # Add UUID at the end if not already in candidate_columns
-        if "UUID" in df.columns and "UUID" not in candidate_columns:
-            display_columns.append("UUID")
-        
-        # Remove any duplicates while preserving order
-        display_columns = list(dict.fromkeys(display_columns))
-        
-        # Configure special columns for display
-        column_config = {
-            "UUID": st.column_config.LinkColumn("Answer Sheet", display_text="Answer Sheet"),
-            "Answered": st.column_config.ProgressColumn(
-                "Test Progress",
-                help="Number of Questions answered",
-                format="%d",
-                min_value=0,
-                max_value=qnum
-            )
-        }
-        
-        # Add Score Percent progress column if it exists
-        if "Score Percent" in display_columns:
-            column_config["Score Percent"] = st.column_config.ProgressColumn(
-                "Score Percent",
-                help="Total Score Percent",
-                format="%f",
-                min_value=0,
-                max_value=qnum
-            )
-            
-        # Exclude special columns from filtering
-        excluded_from_filter = ["Score Percent", "UUID"]
-        
+        for response in responses:
+            for i in test["infofields"].keys():
+                if info_priorities[i] == True:
+                    record[test["infofields"][i]]= response["info"][i]
+            record["Subject Distribution"] = []
+            for i in response["subject_scores"].keys():
+                record[i] = response["subject_scores"][i]
+                record["Subject Distribution"].append(record[i])
+            record["Score"] = sum(record["Subject Distribution"])
+            record["Completion"] = len(response["results"].keys())/len(test["questions"])
+            records.append(record)
+
+        df = pd.DataFrame(records)
+
         # Display the dataframe with all candidate columns
         st.dataframe(
-            filter_dataframe(df[display_columns], excluded_columns=excluded_from_filter),
-            column_config=column_config,
+            filter_dataframe(df),
+            # column_config=column_config,
             use_container_width=True
         )
         

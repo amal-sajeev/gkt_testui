@@ -15,6 +15,7 @@ class Info(BaseModel):
     item_type: str = Field(
         "text", description="The type of input this field should accept.")
     field_description: str = Field("", description = "The description shown for each info field.")
+    priority: bool = Field(False, description = "Whether this info field should be shown in the results page.")
 
 
 class Question(BaseModel):
@@ -39,15 +40,17 @@ class Test(BaseModel):
     title: str = Field("", description="The title of this test.")
     client: str = Field(
         "", description="The client for whom this test was made for.")
-    subjects: List = Field(description="The subjects of the questions in this test. Each subject is a dictionary with the keys subject, and subject_total, where subject_total is the total score of all the questions of the subject in the test.")
+    subjects:  Dict = Field(
+        {}, description="The scores for each questions in each subject. Keys should be subjects, and value should be the total possible score of all the questions of the subject in the test.")
     publish_date: datetime = datetime.now(tz=timezone.utc)
     total_score: int = Field(0, description="The total score of the test.")
     submissions: int = Field(
         0, description="The number of submissions to the test")
-    submittedid: List = Field(
-        [], description="List with IDs of all the people who submitted responses.")
+    submittedid: Dict = Field(
+        {}, description=" Keys are IDs of all the people who submitted responses, values will be their respective scores.")
+    infofields: dict = Field({}, description = "A list of info fields that the candidate has to enter in the test. Should be a dictionary with key being info field ID and the value being the respective info field's field_name.")
     questions: dict = Field(
-        [], description="A list of questions in the test. Each question should be a dictionary with keys questionid and value, the value being the point value.")
+        {}, description="A list of questions in the test. Each question should be a dictionary with keys questionid and value, the value being the point value.")
     negative_multiplier: float = Field(
         0, description="Optional negative multiplier. If set to anything, the total points will be subtracted from if the question is wrong.")
     
@@ -58,11 +61,11 @@ class Response(BaseModel):
         description="The ID of the test this response was for.")
     submission_date: datetime = Field(datetime.now(
         tz=timezone.utc), description="The date time at which the response was submitted.")
-    subject_scores: List = Field(
-        [], description="The scores for each questions in each subject. Each entry in the list should be a dictionary with keys subject, and subject_score")
+    subject_scores: Dict = Field(
+        {}, description="The scores for each questions in each subject. Keys should be subjects, and value should be subject_score")
     client: str = Field(description="The client that the responder is under.")
-    info: List = Field(
-        [], description="The responses to info questions. The list should consist of dictionary objects with keys infoid and response.")
+    info: Dict = Field(
+        {}, description="The responses to info questions. The dictionary should consist of keys infoid and value info.")
     results: dict = Field(
         {}, description="The response to the test questions. This should be a dictionary with the keys questionids and the values being the option responded with.")
 
@@ -184,6 +187,7 @@ def delete_questions(qid: Union[str, List[str]] = None, content: str = None, sub
        count = (db["questions"].delete_many({"subject": subject})).deleted_count
        return(f"Deleted {count} {"question" if count==1 else "questions"}")
 
+
 #CRUD for info
 
 def info_by_name(name: Union[str,List[str]]):
@@ -277,6 +281,20 @@ def info_delete(iid:Union[str,List[str]] = None, field_name:Union[str, List[str]
             return(db["info"].delete_many({"field_name": field_name}))
         else:
             return(db["info"].delete_many({"field_name": {"$in":field_name}}))
+
+def get_priority(iid:Union[str,List[str]]=None):
+    
+    iidlist = []
+    if type(iid)==str:
+        iidlist.append(iid)
+    else:
+        iidlist.extend(iid)
+
+    prioritydict = {}
+    infolist = db["info"].find({"info":{"$in":iidlist}})
+    for i in list(infolist):
+        prioritydict[i["_id"]] = i["priority"]
+    return(prioritydict)    
 
 # CRUD for Tests
 
@@ -441,6 +459,12 @@ def create_test(test = Test):
 def update_test(tid :str, new: Test):
     return(db["tests"].find_one_and_replace({"_id":tid},new.model_dump()))
 
+def add_submission(testid: int, responseid: str, score:float):
+    test = test_by_id(tid)
+    test["submissionsid"][responseid] = score
+    test["submissions"] += 1
+    return(update_test(tid,test))
+
 def test_delete(tid:Union[str,List[str]] = None, title:Union[str, List[str]] = None, client:Union[str, List[str]] = None):
 
     if tid:
@@ -459,6 +483,78 @@ def test_delete(tid:Union[str,List[str]] = None, title:Union[str, List[str]] = N
         else:
             return(db["info"].delete_many({"field_name": {"$in":field_name}}).deleted_count)
 
+import pandas as pd
+
+def convert_responses_to_dataframe(test_data: Dict):
+    """
+    Convert a single MongoDB document into a structured DataFrame.
+    
+    Args:
+        test_data (Dict): A single document from MongoDB collection
+        
+    Returns:
+        pd.DataFrame: Structured DataFrame with assessment data
+    """
+    # Initialize list to store data for DataFrame
+    records = []
+    
+    # Extract all question IDs from the document to batch the lookup
+    all_question_ids = []
+    if "questions" in test_data and isinstance(test_data["questions"], dict):
+        all_question_ids = list(test_data["questions"].keys())
+    
+    # Batch fetch all question details in a single call
+    questions_details = {}
+    if all_question_ids:
+        fetched_questions = question_by_id(all_question_ids)
+        questions_details = {q["_id"]: q for q in fetched_questions}
+    
+    # Get document metadata
+    client_id = test_data.get("client", "")
+    assessment_id = test_data.get("_id", "")
+    title = test_data.get("title", "")
+    total_score = test_data.get("total_score", 0)
+    publish_date = test_data.get("publish_date", "")
+    
+    # Get submission details
+    submissions = test_data.get("submissions", 0)
+    submitted_ids = []
+    submitted_scores = []
+    
+    if isinstance(test_data.get("submittedid"), dict):
+        for sub_id, score in test_data["submittedid"].items():
+            submitted_ids.append(sub_id)
+            submitted_scores.append(score)
+    
+    # Process each question in the document
+    if isinstance(test_data.get("questions"), dict):
+        for q_id, q_score in test_data["questions"].items():
+            q_details = questions_details.get(q_id, {})
+            q_text = q_details.get("text", "")
+            q_options = q_details.get("options", [])
+            q_correct_answer = q_details.get("correct_answer", "")
+            
+            record = {
+                "assessment_id": assessment_id,
+                "title": title,
+                "client_id": client_id,
+                "publish_date": publish_date,
+                "total_score": total_score,
+                "submissions": submissions,
+                "question_id": q_id,
+                "question_text": q_text,
+                "question_options": q_options,
+                "question_correct_answer": q_correct_answer,
+                "question_score": q_score,
+                "submitted_ids": submitted_ids,
+                "submitted_scores": submitted_scores,
+                "negative_multiplier": test_data.get("negative_multiplier", 0)
+            }
+            records.append(record)
+    
+    # Create DataFrame from records
+    df = pd.DataFrame(records)
+    return df
 
 #CRUD for Responses
 
@@ -476,9 +572,9 @@ def get_responses(rid: Union[str,List[str]] = None, tid: Union[str,List[str]] = 
     if tid:
         tidlist = []
         if type(tid)==str:
-            ridlist.append(tid)
+            tidlist.append(tid)
         else:
-            ridlist.extend(tid)
+            tidlist.extend(tid)
 
         return(list(db["responses"].find({"test_ID":{"$in":tidlist}})))
 
