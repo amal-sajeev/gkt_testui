@@ -103,25 +103,26 @@ def create_results_grid(testid: str = ""):
     test= archiver.test_by_id(tid=testid)[0]
     responses = archiver.get_responses(tid=test["_id"])
     info_priorities = {i["_id"]:i["priority"] for i in archiver.info_by_id(test["infofields"].keys())}
-    pprint(responses)
+    
     try:
         
-        # Load Excel file
         records = []
-        record={}
+        
         
         for response in responses:
+            pprint(response)
+            record={}
             for i in test["infofields"].keys():
                 if info_priorities[i] == True:
                     record[test["infofields"][i]]= response["info"][i]
+            record["Completion"] = len(response["results"].keys())/len(test["questions"])
             record["Subject Distribution"] = []
             for i in response["subject_scores"].keys():
                 record[i] = response["subject_scores"][i]
                 record["Subject Distribution"].append(record[i])
             record["Score"] = sum(record["Subject Distribution"])
-            record["Completion"] = len(response["results"].keys())/len(test["questions"])
             records.append(record)
-
+        
         df = pd.DataFrame(records)
 
         # Display the dataframe with all candidate columns

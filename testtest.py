@@ -1,302 +1,534 @@
-import streamlit as st
-import archiver
+from datetime import datetime, timezone
+from typing import Dict, List
+import uuid
 from archiver import *
+import archiver
 
-import uuid
 from datetime import datetime, timezone
-
+from typing import Dict, List
 import uuid
-from datetime import datetime, timezone
 
-# Info Fields
+# Info Fields remain the same as they were appropriate
 info_fields = [
-    Info(field_name="Full Name", item_type="text", field_description="Enter your full name.", priority=True),
-    Info(field_name="Email Address", item_type="email", field_description="Enter your email address.", priority=True),
-    Info(field_name="Phone Number", item_type="text", field_description="Enter your contact number."),
-    Info(field_name="Age", item_type="number", field_description="Enter your age."),
-    Info(field_name="Gender", item_type="dropdown", field_description="Select your gender."),
-    Info(field_name="Country", item_type="dropdown", field_description="Select your country."),
-    Info(field_name="Occupation", item_type="text", field_description="Enter your occupation."),
-    Info(field_name="Education Level", item_type="dropdown", field_description="Select your highest qualification."),
-    Info(field_name="Preferred Language", item_type="dropdown", field_description="Select your preferred language."),
-    Info(field_name="Feedback", item_type="textarea", field_description="Provide any feedback you have.")
+    Info(
+        
+        field_name="Full Name",
+        item_type="text",
+        field_description="Enter your full name as it appears on official documents",
+        priority=True
+    ),
+    Info(
+        
+        field_name="Employee ID",
+        item_type="text",
+        field_description="Enter your company employee ID",
+        priority=True
+    ),
+    Info(
+        
+        field_name="Department",
+        item_type="text",
+        field_description="Enter your current department",
+        priority=False
+    ),
+    Info(
+        
+        field_name="Years of Experience",
+        item_type="text",
+        field_description="Enter your total years of professional experience",
+        priority=False
+    ),
+    Info(
+        
+        field_name="Contact Email",
+        item_type="text",
+        field_description="Enter your work email address",
+        priority=True
+    )
 ]
 
-# Questions
+# Expanded question set with multiple questions per subject
 questions = [
-    Question(content="What is the capital of France?", options=["Paris", "Berlin", "Madrid", "Rome"], answer="Paris", subject="Geography", difficulty_rating=2),
-    Question(content="Solve: 5 + 7", options=["10", "11", "12", "13"], answer="12", subject="Mathematics", difficulty_rating=1),
-    Question(content="Who wrote 'Hamlet'?", options=["Shakespeare", "Chaucer", "Dickens", "Austen"], answer="Shakespeare", subject="Literature", difficulty_rating=2),
-    Question(content="What is the chemical symbol for water?", options=["O2", "H2O", "CO2", "NaCl"], answer="H2O", subject="Science", difficulty_rating=1),
-    Question(content="Which planet is known as the Red Planet?", options=["Earth", "Mars", "Jupiter", "Saturn"], answer="Mars", subject="Astronomy", difficulty_rating=2),
-    Question(content="In what year did World War II end?", options=["1942", "1945", "1948", "1950"], answer="1945", subject="History", difficulty_rating=3),
-    Question(content="What is the square root of 64?", options=["6", "7", "8", "9"], answer="8", subject="Mathematics", difficulty_rating=1),
-    Question(content="Who painted the Mona Lisa?", options=["Van Gogh", "Picasso", "Da Vinci", "Michelangelo"], answer="Da Vinci", subject="Art", difficulty_rating=2),
-    Question(content="What gas do plants absorb from the atmosphere?", options=["Oxygen", "Hydrogen", "Carbon Dioxide", "Nitrogen"], answer="Carbon Dioxide", subject="Science", difficulty_rating=2),
-    Question(content="Which ocean is the largest?", options=["Atlantic", "Pacific", "Indian", "Arctic"], answer="Pacific", subject="Geography", difficulty_rating=2)
+    # Software Design Questions
+    Question(
+        id="sd1",
+        content="What is the primary purpose of dependency injection?",
+        images=[],
+        options=[
+            "To reduce code coupling",
+            "To increase application speed",
+            "To minimize memory usage",
+            "To enhance UI design"
+        ],
+        answer="To reduce code coupling",
+        subject="Software Design",
+        difficulty_rating=3
+    ),
+    Question(
+        id="sd2",
+        content="Which SOLID principle deals with class inheritance?",
+        images=[],
+        options=[
+            "Single Responsibility",
+            "Liskov Substitution",
+            "Interface Segregation",
+            "Dependency Inversion"
+        ],
+        answer="Liskov Substitution",
+        subject="Software Design",
+        difficulty_rating=4
+    ),
+    Question(
+        id="sd3",
+        content="What pattern is best for implementing undo functionality?",
+        images=[],
+        options=[
+            "Observer Pattern",
+            "Command Pattern",
+            "Factory Pattern",
+            "Singleton Pattern"
+        ],
+        answer="Command Pattern",
+        subject="Software Design",
+        difficulty_rating=3
+    ),
+    
+    # Data Structures Questions
+    Question(
+        id="ds1",
+        content="Which data structure would be most efficient for implementing a cache?",
+        images=[],
+        options=[
+            "Linked List",
+            "Hash Table",
+            "Binary Tree",
+            "Stack"
+        ],
+        answer="Hash Table",
+        subject="Data Structures",
+        difficulty_rating=4
+    ),
+    Question(
+        id="ds2",
+        content="What is the space complexity of a balanced binary search tree?",
+        images=[],
+        options=[
+            "O(1)",
+            "O(n)",
+            "O(log n)",
+            "O(n log n)"
+        ],
+        answer="O(n)",
+        subject="Data Structures",
+        difficulty_rating=3
+    ),
+    Question(
+        id="ds3",
+        content="Which data structure is best for implementing a priority queue?",
+        images=[],
+        options=[
+            "Array",
+            "Linked List",
+            "Heap",
+            "Stack"
+        ],
+        answer="Heap",
+        subject="Data Structures",
+        difficulty_rating=4
+    ),
+    
+    # Algorithms Questions
+    Question(
+        id="alg1",
+        content="What is the time complexity of quicksort in the average case?",
+        images=[],
+        options=[
+            "O(n)",
+            "O(n log n)",
+            "O(n²)",
+            "O(log n)"
+        ],
+        answer="O(n log n)",
+        subject="Algorithms",
+        difficulty_rating=4
+    ),
+    Question(
+        id="alg2",
+        content="Which algorithm is most efficient for finding the shortest path in an unweighted graph?",
+        images=[],
+        options=[
+            "Depth-First Search",
+            "Breadth-First Search",
+            "Dijkstra's Algorithm",
+            "A* Search"
+        ],
+        answer="Breadth-First Search",
+        subject="Algorithms",
+        difficulty_rating=3
+    ),
+    Question(
+        id="alg3",
+        content="What is the best algorithm for finding the minimum spanning tree?",
+        images=[],
+        options=[
+            "Quicksort",
+            "Kruskal's Algorithm",
+            "Binary Search",
+            "Insertion Sort"
+        ],
+        answer="Kruskal's Algorithm",
+        subject="Algorithms",
+        difficulty_rating=4
+    ),
+    
+    # Database Questions
+    Question(
+        id="db1",
+        content="Which SQL join type returns all records from both tables?",
+        images=[],
+        options=[
+            "INNER JOIN",
+            "LEFT JOIN",
+            "RIGHT JOIN",
+            "FULL OUTER JOIN"
+        ],
+        answer="FULL OUTER JOIN",
+        subject="Databases",
+        difficulty_rating=2
+    ),
+    Question(
+        id="db2",
+        content="What is the purpose of database normalization?",
+        images=[],
+        options=[
+            "Increase data redundancy",
+            "Reduce data integrity",
+            "Eliminate data redundancy",
+            "Slow down queries"
+        ],
+        answer="Eliminate data redundancy",
+        subject="Databases",
+        difficulty_rating=3
+    ),
+    Question(
+        id="db3",
+        content="Which index type is best for exact match queries?",
+        images=[],
+        options=[
+            "B-tree",
+            "Hash",
+            "Bitmap",
+            "GiST"
+        ],
+        answer="Hash",
+        subject="Databases",
+        difficulty_rating=4
+    ),
+    
+    # DevOps Questions
+    Question(
+        id="devops1",
+        content="What is the main benefit of using containers in deployment?",
+        images=[],
+        options=[
+            "Application isolation",
+            "Faster code execution",
+            "Better UI rendering",
+            "Improved database performance"
+        ],
+        answer="Application isolation",
+        subject="DevOps",
+        difficulty_rating=3
+    ),
+    Question(
+        id="devops2",
+        content="Which tool is best for container orchestration?",
+        images=[],
+        options=[
+            "Docker",
+            "Kubernetes",
+            "Git",
+            "Maven"
+        ],
+        answer="Kubernetes",
+        subject="DevOps",
+        difficulty_rating=4
+    ),
+    Question(
+        id="devops3",
+        content="What is the purpose of blue-green deployment?",
+        images=[],
+        options=[
+            "Visual design",
+            "Zero-downtime deployment",
+            "Code testing",
+            "Database backup"
+        ],
+        answer="Zero-downtime deployment",
+        subject="DevOps",
+        difficulty_rating=3
+    )
 ]
 
-# Tests
+# Tests with multiple questions per subject
 tests = [
     Test(
-        title="General Knowledge Test 1",
-        client="Client A",
-        subjects={"Geography": 10, "Mathematics": 10, "Literature": 10},
-        total_score=30,
-        submissions=5,
-        submittedid={},
-        infofields={info.id: info.field_name for info in info_fields[:5]},
-        questions={question.id: 3 for question in questions[:3]}
-    ),
-    Test(
-        title="Science and History Test",
-        client="Client B",
-        subjects={"Science": 20, "History": 10},
-        total_score=30,
+        id="test1",
+        title="Software Engineering Assessment - Junior Level",
+        client="TechCorp",
+        subjects={
+            "Software Design": 30,
+            "Data Structures": 30,
+            "Algorithms": 40
+        },
+        total_score=100,
         submissions=3,
-        submittedid={},
-        infofields={info.id: info.field_name for info in info_fields[2:7]},
-        questions={question.id: 3 for question in questions[3:6]}
+        submittedid={
+            "user1": 75,
+            "user2": 85,
+            "user3": 68
+        },
+        infofields={
+            info_fields[0].id: "Full Name",
+            info_fields[1].id: "Employee ID",
+            info_fields[4].id: "Contact Email"
+        },
+        questions={
+            questions[0].id: 15, questions[1].id: 15,
+            questions[3].id: 15, questions[4].id: 15,
+            questions[6].id: 20, questions[7].id: 20
+        },
+        negative_multiplier=0.25
     ),
     Test(
-        title="Advanced Mathematics Test",
-        client="Client C",
-        subjects={"Mathematics": 30},
-        total_score=30,
-        submissions=4,
-        submittedid={},
-        infofields={info.id: info.field_name for info in info_fields[1:6]},
-        questions={question.id: 5 for question in questions[1:7]}
+        id="test2",
+        title="Backend Developer Evaluation",
+        client="DataSys",
+        subjects={
+            "Databases": 40,
+            "DevOps": 30,
+            "Software Design": 30
+        },
+        total_score=100,
+        submissions=2,
+        submittedid={
+            "user4": 85,
+            "user5": 92
+        },
+        infofields={
+            info_fields[0].id: "Full Name",
+            info_fields[2].id: "Department",
+            info_fields[3].id: "Years of Experience"
+        },
+        questions={
+            questions[9].id: 20, questions[10].id: 20,
+            "devops1": 15, "devops2": 15,
+            questions[0].id: 15, questions[1].id: 15
+        },
+        negative_multiplier=0
     ),
     Test(
-        title="Art and Science Combo Test",
-        client="Client D",
-        subjects={"Art": 10, "Science": 20},
-        total_score=30,
-        submissions=4,
-        submittedid={},
-        infofields={info.id: info.field_name for info in info_fields[0:4]},
-        questions={question.id: 3 for question in questions[7:10]}
+        id="test3",
+        title="Full Stack Developer Assessment",
+        client="WebTech",
+        subjects={
+            "Software Design": 25,
+            "Databases": 25,
+            "DevOps": 25,
+            "Algorithms": 25
+        },
+        total_score=100,
+        submissions=2,
+        submittedid={
+            "user6": 76,
+            "user7": 88
+        },
+        infofields={
+            info_fields[0].id: "Full Name",
+            info_fields[1].id: "Employee ID",
+            info_fields[2].id: "Department",
+            info_fields[3].id: "Years of Experience",
+            info_fields[4].id: "Contact Email"
+        },
+        questions={
+            questions[0].id: 12.5, questions[1].id: 12.5,
+            questions[9].id: 12.5, questions[10].id: 12.5,
+            "devops1": 12.5, "devops2": 12.5,
+            questions[6].id: 12.5, questions[7].id: 12.5
+        },
+        negative_multiplier=0.1
+    ),
+    Test(
+        id="test4",
+        title="Algorithm Specialist Evaluation",
+        client="AlgoTech",
+        subjects={
+            "Algorithms": 60,
+            "Data Structures": 40
+        },
+        total_score=100,
+        submissions=2,
+        submittedid={
+            "user8": 95,
+            "user9": 82
+        },
+        infofields={
+            info_fields[0].id: "Full Name",
+            info_fields[3].id: "Years of Experience",
+            info_fields[4].id: "Contact Email"
+        },
+        questions={
+            questions[6].id: 20, questions[7].id: 20, questions[8].id: 20,
+            questions[3].id: 20, questions[4].id: 20
+        },
+        negative_multiplier=0.2
+    ),
+    Test(
+        id="test5",
+        title="DevOps Engineer Assessment",
+        client="CloudSys",
+        subjects={
+            "DevOps": 60,
+            "Databases": 40
+        },
+        total_score=100,
+        submissions=2,
+        submittedid={
+            "user10": 89,
+            "user11": 94
+        },
+        infofields={
+            info_fields[0].id: "Full Name",
+            info_fields[1].id: "Employee ID",
+            info_fields[2].id: "Department"
+        },
+        questions={
+            "devops1": 20, "devops2": 20, "devops3": 20,
+            questions[9].id: 20, questions[10].id: 20
+        },
+        negative_multiplier=0
     )
 ]
 
-# Responses for General Knowledge Test 1
+# Responses with multiple questions answered per subject
 responses = [
     Response(
+        id="resp1",
         test_ID=tests[0].id,
-        client="Client A",
-        subject_scores={"Geography": 8, "Mathematics": 9, "Literature": 7},
-        info = {
-            list(tests[0].infofields.keys())[0]:"John Doe",
-            list(tests[0].infofields.keys())[1]:"john@example.com",
-            list(tests[0].infofields.keys())[2]:"1234567890",
-            list(tests[0].infofields.keys())[3]:"30",
-            list(tests[0].infofields.keys())[4]:"Male"
+        client="TechCorp",
+        subject_scores={
+            "Software Design": 25,
+            "Data Structures": 30,
+            "Algorithms": 20
         },
-        results={question_id: "Paris" for question_id in tests[0].questions.keys()}
+        info={
+            info_fields[0].id: "John Doe",
+            info_fields[1].id: "TC001",
+            info_fields[4].id: "john.doe@techcorp.com"
+        },
+        results={
+            questions[0].id: "To reduce code coupling",
+            questions[1].id: "Liskov Substitution",
+            questions[3].id: "Hash Table",
+            questions[4].id: "O(n)",
+            questions[6].id: "O(n log n)",
+            questions[7].id: "Depth-First Search"
+        }
     ),
     Response(
-        test_ID=tests[0].id,
-        client="Client A",
-        subject_scores={"Geography": 7, "Mathematics": 8, "Literature": 6},
-        info = {
-            list(tests[0].infofields.keys())[0]:"Jane Smith",
-            list(tests[0].infofields.keys())[1]:"jane@example.com",
-            list(tests[0].infofields.keys())[2]:"0987654321",
-            list(tests[0].infofields.keys())[3]:"25",
-            list(tests[0].infofields.keys())[4]:"Female"
+        id="resp2",
+        test_ID=tests[1].id,
+        client="DataSys",
+        subject_scores={
+            "Databases": 35,
+            "DevOps": 30,
+            "Software Design": 20
         },
-        results={question_id: "Berlin" for question_id in tests[0].questions.keys()}
+        info={
+            info_fields[0].id: "Jane Smith",
+            info_fields[2].id: "Backend Development",
+            info_fields[3].id: "5"
+        },
+        results={
+            questions[9].id: "FULL OUTER JOIN",
+            questions[10].id: "Eliminate data redundancy",
+            "devops1": "Application isolation",
+            "devops2": "Kubernetes",
+            questions[0].id: "To reduce code coupling",
+            questions[1].id: "Interface Segregation"
+        }
     ),
     Response(
-        test_ID=tests[0].id,
-        client="Client A",
-        subject_scores={"Geography": 9, "Mathematics": 10, "Literature": 8},
-        info = {
-            list(tests[0].infofields.keys())[0]:"Sam Green",
-            list(tests[0].infofields.keys())[1]:"sam@example.com",
-            list(tests[0].infofields.keys())[2]:"1122334455",
-            list(tests[0].infofields.keys())[3]:"28",
-            list(tests[0].infofields.keys())[4]:"Non-binary"
+        id="resp3",
+        test_ID=tests[2].id,
+        client="WebTech",
+        subject_scores={
+            "Software Design": 25,
+            "Databases": 25,
+            "DevOps": 12.5,
+            "Algorithms": 25
         },
-        results={question_id: "Paris" for question_id in tests[0].questions.keys()}
+        info={
+            info_fields[0].id: "Mike Johnson",
+            info_fields[1].id: "WT123",
+            info_fields[2].id: "Full Stack",
+            info_fields[3].id: "3",
+            info_fields[4].id: "mike.j@webtech.com"
+        },
+        results={
+            questions[0].id: "To reduce code coupling",
+            questions[1].id: "Liskov Substitution",
+            questions[9].id: "FULL OUTER JOIN",
+            questions[10].id: "Eliminate data redundancy",
+            "devops1": "Application isolation",
+            "devops2": "Docker",
+            questions[6].id: "O(n log n)",
+            questions[7].id: "Breadth-First Search"
+        }
     ),
     Response(
-        test_ID=tests[0].id,
-        client="Client A",
-        subject_scores={"Geography": 6, "Mathematics": 7, "Literature": 5},
-        info = {
-            list(tests[0].infofields.keys())[0]:"Alex White",
-            list(tests[0].infofields.keys())[1]:"alex@example.com",
-            list(tests[0].infofields.keys())[2]:"5566778899",
-            list(tests[0].infofields.keys())[3]:"22",
-            list(tests[0].infofields.keys())[4]:"Female"
+        id="resp4",
+        test_ID=tests[3].id,
+        client="AlgoTech",
+        subject_scores={
+            "Algorithms": 60,
+            "Data Structures": 35
         },
-        results={question_id: "Madrid" for question_id in tests[0].questions.keys()}
+        info={
+            info_fields[0].id: "Sarah Wilson",
+            info_fields[3].id: "7",
+            info_fields[4].id: "sarah.w@algotech.com"
+        },
+        results={
+            questions[6].id: "O(n log n)",
+            questions[7].id: "Breadth-First Search",
+            questions[8].id: "Kruskal's Algorithm",
+            questions[3].id: "Hash Table",
+            questions[4].id: "O(n)"
+        }
+    ),
+    Response(
+        id="resp5",
+        test_ID=tests[4].id,
+        client="CloudSys",
+        subject_scores={
+            "DevOps": 60,
+            "Databases": 40
+        },
+        info={
+            info_fields[0].id: "Alex Brown",
+            info_fields[1].id: "CS456",
+            info_fields[2].id: "Cloud Infrastructure"
+        },
+        results={
+            "devops1": "Application isolation",
+            "devops2": "Kubernetes",
+            "devops3": "Zero-downtime deployment",
+            questions[9].id: "FULL OUTER JOIN",
+            questions[10].id: "Eliminate data redundancy"
+        }
     )
 ]
-
-responses += [
-    Response(
-        test_ID=tests[1].id,
-        client="Client B",
-        subject_scores={"Science": 18, "History": 9},
-        info = {
-            list(tests[1].infofields.keys())[0]:"Emily Brown",
-            list(tests[1].infofields.keys())[1]:"emily@example.com",
-            list(tests[1].infofields.keys())[2]:"6677889900",
-            list(tests[1].infofields.keys())[3]:"35",
-            list(tests[1].infofields.keys())[4]:"Female"
-        },
-        results={question_id: "H2O" for question_id in tests[1].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[1].id,
-        client="Client B",
-        subject_scores={"Science": 16, "History": 8},
-        info = {
-            list(tests[1].infofields.keys())[0]:"Mark Black",
-            list(tests[1].infofields.keys())[1]:"mark@example.com",
-            list(tests[1].infofields.keys())[2]:"4455667788",
-            list(tests[1].infofields.keys())[3]:"40",
-            list(tests[1].infofields.keys())[4]:"Male"
-        },
-        results={question_id: "CO2" for question_id in tests[1].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[1].id,
-        client="Client B",
-        subject_scores={"Science": 19, "History": 10},
-        info = {
-            list(tests[1].infofields.keys())[0]:"Sophia Grey",
-            list(tests[1].infofields.keys())[1]:"sophia@example.com",
-            list(tests[1].infofields.keys())[2]:"2233445566",
-            list(tests[1].infofields.keys())[3]:"29",
-            list(tests[1].infofields.keys())[4]:"Female"
-        },
-        results={question_id: "H2O" for question_id in tests[1].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[1].id,
-        client="Client B",
-        subject_scores={"Science": 14, "History": 7},
-        info = {
-            list(tests[1].infofields.keys())[0]:"Luke Grey",
-            list(tests[1].infofields.keys())[1]:"luke@example.com",
-            list(tests[1].infofields.keys())[2]:"9988776655",
-            list(tests[1].infofields.keys())[3]:"32",
-            list(tests[1].infofields.keys())[4]:"Male"
-        },
-        results={question_id: "O2" for question_id in tests[1].questions.keys()}
-    )
-]
-
-responses += [
-    Response(
-        test_ID=tests[2].id,
-        client="Client C",
-        subject_scores={"Mathematics": 28},
-        info = {
-            list(tests[2].infofields.keys())[0]:"Oliver Green",
-            list(tests[2].infofields.keys())[1]:"oliver@example.com",
-            list(tests[2].infofields.keys())[2]:"3344556677",
-            list(tests[2].infofields.keys())[3]:"27",
-            list(tests[2].infofields.keys())[4]:"Male"
-        },
-        results={question_id: "12" for question_id in tests[2].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[2].id,
-        client="Client C",
-        subject_scores={"Mathematics": 25},
-        info = {
-            list(tests[2].infofields.keys())[0]:"Mia Red",
-            list(tests[2].infofields.keys())[1]:"mia@example.com",
-            list(tests[2].infofields.keys())[2]:"7766554433",
-            list(tests[2].infofields.keys())[3]:"26",
-            list(tests[2].infofields.keys())[4]:"Female"
-        },
-        results={question_id: "8" for question_id in tests[2].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[2].id,
-        client="Client C",
-        subject_scores={"Mathematics": 29},
-        info = {
-            list(tests[2].infofields.keys())[0]:"Ella Blue",
-            list(tests[2].infofields.keys())[1]:"ella@example.com",
-            list(tests[2].infofields.keys())[2]:"1122112211",
-            list(tests[2].infofields.keys())[3]:"30",
-            list(tests[2].infofields.keys())[4]:"Female"
-        },
-        results={question_id: "8" for question_id in tests[2].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[2].id,
-        client="Client C",
-        subject_scores={"Mathematics": 20},
-        info = {
-            list(tests[2].infofields.keys())[0]:"Noah Brown",
-            list(tests[2].infofields.keys())[1]:"noah@example.com",
-            list(tests[2].infofields.keys())[2]:"9988445566",
-            list(tests[2].infofields.keys())[3]:"33",
-            list(tests[2].infofields.keys())[4]:"Male"
-        },
-        results={question_id: "6" for question_id in tests[2].questions.keys()}
-    )
-]
-
-responses += [
-    Response(
-        test_ID=tests[3].id,
-        client="Client D",
-        subject_scores={"Art": 9, "Science": 18},
-        info = {
-            list(tests[3].infofields.keys())[0]:"Lily White",
-            list(tests[3].infofields.keys())[1]:"lily@example.com",
-            list(tests[3].infofields.keys())[2]:"4433221100",
-            list(tests[3].infofields.keys())[3]:"31"
-        },
-        results={question_id: "Da Vinci" for question_id in tests[3].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[3].id,
-        client="Client D",
-        subject_scores={"Art": 7, "Science": 15},
-        info = {
-            list(tests[3].infofields.keys())[0]:"Leo Silver",
-            list(tests[3].infofields.keys())[1]:"leo@example.com",
-            list(tests[3].infofields.keys())[2]:"2233114455",
-            list(tests[3].infofields.keys())[3]:"29"
-        },
-        results={question_id: "Van Gogh" for question_id in tests[3].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[3].id,
-        client="Client D",
-        subject_scores={"Art": 8, "Science": 17},
-        info = {
-            list(tests[3].infofields.keys())[0]:"Grace Gold",
-            list(tests[3].infofields.keys())[1]:"grace@example.com",
-            list(tests[3].infofields.keys())[2]:"6655443322",
-            list(tests[3].infofields.keys())[3]:"34"
-        },
-        results={question_id: "Da Vinci" for question_id in tests[3].questions.keys()}
-    ),
-    Response(
-        test_ID=tests[3].id,
-        client="Client D",
-        subject_scores={"Art": 10, "Science": 19},
-        info = {
-            list(tests[3].infofields.keys())[0]:"Ivy Black",
-            list(tests[3].infofields.keys())[1]:"ivy@example.com",
-            list(tests[3].infofields.keys())[2]:"5566778899",
-            list(tests[3].infofields.keys())[3]:"28"
-        },
-        results={question_id: "Da Vinci" for question_id in tests[3].questions.keys()}
-    )
-]
-
 
 print(archiver.add_info_field(info_fields))
 print(archiver.add_question(questions))

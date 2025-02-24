@@ -25,9 +25,9 @@ class Question(BaseModel):
     images: List[str] = Field(
         [], description="The image content of the question. Accepts a list of Base64 strings of the images. Even if it's a single image, pass it in an array, it's simpler.")
     options: List = Field(
-        [], description="The options for the question. Options can be images if you specify the type.  ")
+        [], description="The options for the question. Options can be images if you specify the type.")
     answer: str = Field(
-        description="The correct answer to the question, should be exactly the same as the respective option.")
+        description="The correct answer to the question, should be exactly the same key and value as the respective option.")
     subject: str = Field(
         description="The subject that the question belongs under. This is so that the data is readable during export.")
     difficulty_rating: int = Field(

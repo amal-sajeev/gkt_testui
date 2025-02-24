@@ -9,7 +9,6 @@ def create_searchable_container_list():
     
     containers_data = []
     
-    #Retrieve data from the excel sheet filenames.
     tests = archiver.search_tests()
     test_dat = []
 
@@ -20,7 +19,7 @@ def create_searchable_container_list():
             "pop": test["submissions"],
             "perc": round((len([i for i in test["submittedid"].values() if int(i)>(test["total_score"]*0.6)])/test["submissions"])*100,2) if test["submissions"]>0 else "NO SUBMISSIONS YET",
             "date": test["publish_date"].replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%m/%d/%Y, %H:%M:%S"),
-            "url": f"https://stu.globalknowledgetech.com:1918?test={test["title"]}xlsx"
+            "url": f"https://stu.globalknowledgetech.com:1918?test={test["_id"]}"
         })
 
     # Page title
