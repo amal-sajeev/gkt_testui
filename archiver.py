@@ -142,7 +142,7 @@ def search_questions(subjects : Union[str, List[str]] = None, difficulty: Union[
             filterstring["subject"]["$in"].append(subjects)
         else:
             filterstring["subject"]["$in"].extend(subjects)
-    if subjects != None:
+    if difficulty != None:
         filterstring["difficulty_rating"] = {"$in":[]}
         if type(difficulty) == str:
             filterstring["difficulty_rating"]["$in"].append(subjects)
@@ -323,7 +323,7 @@ def test_by_id(tid:Union[str,List[str]]):
         tidlist.extend(tid)
     return(list(db["tests"].find({"_id":{"$in":tidlist}})))
 
-#Search for questions
+#Search for tests
 def search_tests(
     subjects: Optional[Union[str, List[str]]] = None,
     client: Optional[Union[str, List[str]]] = None,
@@ -405,9 +405,7 @@ def search_tests(
 from pymongo import MongoClient
 from typing import List, Dict, Union, Optional, Any
 
-def get_test_options(
-    get_clients: bool = False,
-    get_subjects: bool = False
+def get_test_options(get_clients:bool = False, get_subjects: bool = False
 ) -> Dict[str, List[Union[str, Dict[str, str]]]]:
     """
     Retrieves lists of unique clients or subjects from the tests collection.
@@ -429,29 +427,14 @@ def get_test_options(
     
     # Retrieve unique subjects if requested
     if get_subjects:
-        # This is more complex as subjects are in an array
-        # First get all tests and extract unique subjects
-        all_subjects = {}
         
-        # Aggregate to get unique subject objects
-        pipeline = [
-            {"$unwind": "$subjects"},  # Deconstruct the subjects array
-            {
-                "$group": {
-                    "_id": "$subjects.subject_name"
-                    }
-            },
-            {"$sort": {"name": 1}}  # Sort by subject name
-        ]
+        subjects = set()
+
+        cursor = collection.find()
+        for i in cursor:
+            subjects.update(i["subjects"].keys())
         
-        subjects_cursor = collection.aggregate(pipeline)
-        
-        # Convert cursor to list of subject objects
-        subjects_list = []
-        for subject in subjects_cursor:
-            subjects_list.append(subject["_id"])
-        
-        return(subjects_list)
+        return(subjects)
 
 def create_test(test = Test):
     return((db["tests"].insert_one(test.model_dump(by_alias=True))).inserted_id)
