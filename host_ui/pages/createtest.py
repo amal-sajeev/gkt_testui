@@ -109,6 +109,7 @@ with selected:
     if st.button("Add a Question", key="addq", type="primary"):
         add_question()
 
+st.session_state.test.subject_multipliers=subpointarr
 
 if len(st.session_state.test.questions)>0:
     st.session_state.test.total_score = sum([st.session_state.test.questions[i] for i in st.session_state.test.questions.keys()])

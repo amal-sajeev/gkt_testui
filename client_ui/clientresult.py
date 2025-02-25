@@ -12,7 +12,6 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import archiver
 from archiver import *
-from pprint import pprint
 
 def filter_dataframe(df: pd.DataFrame, excluded_columns: List[str] = []) -> pd.DataFrame:
     """
@@ -110,30 +109,36 @@ def create_results_grid(testid: str = ""):
         
         
         for response in responses:
-            pprint(response)
             record={}
             for i in test["infofields"].keys():
                 if info_priorities[i] == True:
                     record[test["infofields"][i]]= response["info"][i]
             record["Completion"] = len(response["results"].keys())/len(test["questions"])
-            record["Subject Distribution"] = []
             for i in response["subject_scores"].keys():
                 record[i] = response["subject_scores"][i]
-                record["Subject Distribution"].append(record[i])
-            record["Score"] = sum(record["Subject Distribution"])
+            record["Score"] = sum(response["subject_scores"].values())
+            record["Score Percent"] = round((sum(response["subject_scores"].values())/test["total_score"])*100,2)
             record["UUID"] = f"https://stu.globalknowledgetech.com:9181/?rid={response["_id"]}"
+            
             records.append(record)
         
         df = pd.DataFrame(records)
 
         column_config = {
             "UUID": st.column_config.LinkColumn("Answer Sheet", display_text="Answer Sheet"),
-            "Answered": st.column_config.ProgressColumn(
+            "Completion": st.column_config.ProgressColumn(
                 "Test Progress",
                 help="Number of Questions answered",
                 format="%d",
                 min_value=0,
-                max_value=qnum
+                max_value=len(test["questions"])
+            ),
+            "Score Percent": st.column_config.ProgressColumn(
+                "Score Percent",
+                help="Total Score Percent",
+                format="%f",
+                min_value=0,
+                max_value=len(test["questions"])
             )
         }
 

@@ -42,6 +42,9 @@ class Test(BaseModel):
         "", description="The client for whom this test was made for.")
     subjects:  Dict = Field(
         {}, description="The scores for each questions in each subject. Keys should be subjects, and value should be the total possible score of all the questions of the subject in the test.")
+    subject_multipliers: Dict = Field(
+        {}, description="The point multiplier applied to each subject, for chart purpose."
+    )
     publish_date: datetime = datetime.now(tz=timezone.utc)
     total_score: int = Field(0, description="The total score of the test.")
     submissions: int = Field(
@@ -465,79 +468,6 @@ def test_delete(tid:Union[str,List[str]] = None, title:Union[str, List[str]] = N
             return(db["info"].delete_many({"field_name": field_name}).deleted_count)
         else:
             return(db["info"].delete_many({"field_name": {"$in":field_name}}).deleted_count)
-
-import pandas as pd
-
-def convert_responses_to_dataframe(test_data: Dict):
-    """
-    Convert a single MongoDB document into a structured DataFrame.
-    
-    Args:
-        test_data (Dict): A single document from MongoDB collection
-        
-    Returns:
-        pd.DataFrame: Structured DataFrame with assessment data
-    """
-    # Initialize list to store data for DataFrame
-    records = []
-    
-    # Extract all question IDs from the document to batch the lookup
-    all_question_ids = []
-    if "questions" in test_data and isinstance(test_data["questions"], dict):
-        all_question_ids = list(test_data["questions"].keys())
-    
-    # Batch fetch all question details in a single call
-    questions_details = {}
-    if all_question_ids:
-        fetched_questions = question_by_id(all_question_ids)
-        questions_details = {q["_id"]: q for q in fetched_questions}
-    
-    # Get document metadata
-    client_id = test_data.get("client", "")
-    assessment_id = test_data.get("_id", "")
-    title = test_data.get("title", "")
-    total_score = test_data.get("total_score", 0)
-    publish_date = test_data.get("publish_date", "")
-    
-    # Get submission details
-    submissions = test_data.get("submissions", 0)
-    submitted_ids = []
-    submitted_scores = []
-    
-    if isinstance(test_data.get("submittedid"), dict):
-        for sub_id, score in test_data["submittedid"].items():
-            submitted_ids.append(sub_id)
-            submitted_scores.append(score)
-    
-    # Process each question in the document
-    if isinstance(test_data.get("questions"), dict):
-        for q_id, q_score in test_data["questions"].items():
-            q_details = questions_details.get(q_id, {})
-            q_text = q_details.get("text", "")
-            q_options = q_details.get("options", [])
-            q_correct_answer = q_details.get("correct_answer", "")
-            
-            record = {
-                "assessment_id": assessment_id,
-                "title": title,
-                "client_id": client_id,
-                "publish_date": publish_date,
-                "total_score": total_score,
-                "submissions": submissions,
-                "question_id": q_id,
-                "question_text": q_text,
-                "question_options": q_options,
-                "question_correct_answer": q_correct_answer,
-                "question_score": q_score,
-                "submitted_ids": submitted_ids,
-                "submitted_scores": submitted_scores,
-                "negative_multiplier": test_data.get("negative_multiplier", 0)
-            }
-            records.append(record)
-    
-    # Create DataFrame from records
-    df = pd.DataFrame(records)
-    return df
 
 #CRUD for Responses
 
