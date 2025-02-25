@@ -1,0 +1,4 @@
+[server]
+sslCertFile = '/opt/SSLCerts/cert.pem'
+sslKeyFile = '/opt/SSLCerts/key.pem'
+port= 1918

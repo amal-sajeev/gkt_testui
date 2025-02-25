@@ -121,14 +121,26 @@ def create_results_grid(testid: str = ""):
                 record[i] = response["subject_scores"][i]
                 record["Subject Distribution"].append(record[i])
             record["Score"] = sum(record["Subject Distribution"])
+            record["UUID"] = f"https://stu.globalknowledgetech.com:9181/?uuid={response["_id"]}"
             records.append(record)
         
         df = pd.DataFrame(records)
 
+        column_config = {
+            "UUID": st.column_config.LinkColumn("Answer Sheet", display_text="Answer Sheet"),
+            "Answered": st.column_config.ProgressColumn(
+                "Test Progress",
+                help="Number of Questions answered",
+                format="%d",
+                min_value=0,
+                max_value=qnum
+            )
+        }
+
         # Display the dataframe with all candidate columns
         st.dataframe(
             filter_dataframe(df),
-            # column_config=column_config,
+            column_config=column_config,
             use_container_width=True
         )
         
