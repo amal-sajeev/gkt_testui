@@ -20,15 +20,15 @@ class Info(BaseModel):
 
 class Question(BaseModel):
     id : str = Field(default_factory=lambda: str(uuid.uuid4()), description = 'The ID of the Question', alias="_id")
-    content: str = Field(
+    content: str = Field("",
         description="The text content of the question. The images go in the question_images parameter.")
     images: List[str] = Field(
         [], description="The image content of the question. Accepts a list of Base64 strings of the images. Even if it's a single image, pass it in an array, it's simpler.")
     options: List = Field(
-        [], description="The options for the question. Options can be images if you specify the type.")
-    answer: str = Field(
-        description="The correct answer to the question, should be exactly the same key and value as the respective option.")
-    subject: str = Field(
+        [], description="The options for the question. Options can only be text, if they need to be images, insert the options as one image with the other images.")
+    answer: List[str] = Field([],
+        description="The correct answers to the question, should be exactly the same values as the respective options.")
+    subject: str = Field("",
         description="The subject that the question belongs under. This is so that the data is readable during export.")
     difficulty_rating: int = Field(
         "1", description="The difficulty rating of the question for easier selection. Should be between 1 and 5")

@@ -1,4 +1,5 @@
 import streamlit as st
+import base64
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,8 +25,8 @@ st.session_state.test.title = st.text_input("Title for this Examination:")
 #Select Subjects
 subjects = st.multiselect("Select Subjects", archiver.get_test_options(get_subjects=True))
 subpointarr = {}
-select_q = []
-all_q = archiver.search_questions(subjects=subjects)
+
+all_q = archiver.search_questions()
 
 def update_points_on_point_change(subpointarr):
     sel_q = [i for i in all_q if i["_id"] in st.session_state.test.questions.keys()]
@@ -33,7 +34,14 @@ def update_points_on_point_change(subpointarr):
         for i in sel_q:
             if i["subject"] in subpointarr.keys():
                 st.session_state.test.questions[i["_id"]] = subpointarr[i["subject"]]
-
+                for j in subjects:
+                    st.session_state.test.subjects[j] = subpointarr[i["subject"]]*len([q for q in sel_q if q["subject"] == j])
+        delarr = []
+        for x in st.session_state.test.subjects.keys():
+            if x not in subjects:
+                delarr.append(x)
+        for x in delarr:
+            del st.session_state.test.subjects[x]
 if len(subjects)>0:
     #Select point values for each subject
     for sub, col in zip(subjects,st.columns(len(subjects))):
@@ -54,15 +62,43 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-#Select Questions based on selected subjects
+@st.dialog("Add a Question", width="large")
+def add_question():
+    new_q = Question()
+    
+    new_q.content = st.text_area("Enter the Question:", key="qcont",placeholder="You can surround words with **, **like this** for bold, and *, like *this* for italics.")
+    
+    images = st.file_uploader("Upload images **required** for the question",type=["png","jpg"],accept_multiple_files=True)
+    for i in images:
+        new_q.images.append( base64.b64encode(i.getvalue()).decode() )
+    option_num = st.number_input("Enter the number of options for the question.", min_value=2, max_value=6,value=2)
+    
+    new_q.options = [i+1 for i in range(option_num)]
+    for i in range(option_num):
+        new_q.options[i] = st.text_input(f"Option {i+1}")
+    
+    new_q.answer = st.multiselect("Choose the answer(s) to the question.", new_q.options)
 
+    new_q.subject = st.text_input("Subject that the question belongs to. Ensure it is spelled and punctuated correctly.")
+
+    new_q.difficulty_rating = st.number_input("Difficulty rating for the question(Optional)", min_value = 1, max_value= 5)
+
+    if st.button("Create Question","adddq"):
+        qid = archiver.add_question(new_q)
+        st.write(qid)
+            # st.rerun()
+
+#Select Questions based on selected subjects
+select_q = {}
 selected, qdat = st.columns(2)
 with qdat:
     with st.container(key="selectdisplay", border = True, height = 450):
         for i in all_q:
-            if st.button(i["content"], key = i["_id"], type = "tertiary"):
-                    st.session_state.test.questions[i["_id"]] = subpointarr[i["subject"]]
-                    st.rerun()
+            if i["subject"] in subjects:
+                if st.button(i["content"], key = i["_id"], type = "tertiary"):
+                        st.session_state.test.questions[i["_id"]] = subpointarr[i["subject"]]
+                        st.rerun()    
+
 with selected:
     with st.container(key="questiondisplay", border = True, height = 450):
         sel_q = [i for i in all_q if i["_id"] in st.session_state.test.questions.keys()]
@@ -70,6 +106,9 @@ with selected:
             if st.button(i["content"], key = "2"+i["_id"], type = "tertiary"):
                 del st.session_state.test.questions[i["_id"]]
                 st.rerun()
+    if st.button("Add a Question", key="addq", type="primary"):
+        add_question()
+
 
 if len(st.session_state.test.questions)>0:
     st.session_state.test.total_score = sum([st.session_state.test.questions[i] for i in st.session_state.test.questions.keys()])
@@ -123,7 +162,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.warning("Please confirm the details before submitting. If you're sure, click the button below.")
+
 if st.button("Create Test", use_container_width=True, key = "premptsubmit", type="primary"):
-    st.error("Please confirm the details before submitting. If you're sure, click the button below.")
-    if st.button("Yes, create the test."):
-        archiver.create_test(st.session_state.test)
+    tid=None
+    try:
+        tid = archiver.create_test(st.session_state.test)
+    except Exception as e:
+        st.toast(f"Failed to create test!\n\nError: {e}")
+    if tid:
+        st.toast(f"Created test successfully!\n\nTest ID: {tid}")
