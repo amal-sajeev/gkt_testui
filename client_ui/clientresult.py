@@ -121,7 +121,7 @@ def create_results_grid(testid: str = ""):
                 record[i] = response["subject_scores"][i]
                 record["Subject Distribution"].append(record[i])
             record["Score"] = sum(record["Subject Distribution"])
-            record["UUID"] = f"https://stu.globalknowledgetech.com:9181/?uuid={response["_id"]}"
+            record["UUID"] = f"https://stu.globalknowledgetech.com:9181/?rid={response["_id"]}"
             records.append(record)
         
         df = pd.DataFrame(records)
